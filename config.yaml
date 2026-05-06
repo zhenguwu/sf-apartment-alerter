@@ -1,0 +1,32 @@
+# Apartment scraper config. Most fields can be overridden by env vars (see .env.example).
+
+llm:
+  provider: google                 # google | (future: openai, anthropic)
+  model: gemma-4-31b-it            # any Gemini-API-served model id. Free tier: 1500 req/day.
+  api_key: ${LLM_API_KEY}          # interpolated from env
+  daily_request_budget: 1500       # free-tier cap for the chosen model
+  budget_safety_factor: 0.8        # use 80% of budget — leaves headroom for retries
+
+filters:
+  # A unit is "interesting" if it satisfies all of these.
+  min_bedrooms: 3
+  min_bathrooms: 3
+  max_price_usd: null              # set a number to filter, or null to ignore
+
+notification:
+  provider: ntfy
+  ntfy_server: https://ntfy.sh
+  ntfy_topic: ${NTFY_TOPIC}
+  ntfy_priority: 5                 # 1=min, 5=max — apartments are urgent
+
+state:
+  path: state.json
+
+logging:
+  level: INFO
+
+# Each entry produces one polling target. `type` selects the site adapter
+# (apt_scraper/sites/<type>.py); `url` and any other keys are passed to it.
+sites:
+  - type: rentnema
+    url: https://www.rentnema.com/availabilities

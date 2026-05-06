@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+launchd agent for the apartment scraper. Keeps the script running on macOS
+even after restarts, with auto-restart on crash.
+
+Setup:
+  1. Edit WorkingDirectory and ProgramArguments paths below if needed.
+  2. cp com.zwu.aptscraper.plist ~/Library/LaunchAgents/
+  3. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+  4. tail -f stdout.log
+
+To stop:
+  launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.zwu.aptscraper</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/zwu/Documents/sf-apartment-alerter</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/zwu/Documents/sf-apartment-alerter/.venv/bin/python</string>
+        <string>/Users/zwu/Documents/sf-apartment-alerter/run.py</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/zwu/Documents/sf-apartment-alerter/stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/zwu/Documents/sf-apartment-alerter/stderr.log</string>
+
+    <!-- Prevent macOS from putting the process to sleep -->
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
