@@ -1,23 +1,23 @@
 # Apartment scraper config. Most fields can be overridden by env vars (see .env.example).
 
 llm:
-  provider: google                 # google | (future: openai, anthropic)
-  model: gemma-4-31b-it            # any Gemini-API-served model id. Free tier: 1500 req/day.
-  api_key: ${LLM_API_KEY}          # interpolated from env
-  daily_request_budget: 1500       # free-tier cap for the chosen model
-  budget_safety_factor: 0.8        # use 80% of budget — leaves headroom for retries
+  provider: xai # xai | google | (future: openai, anthropic)
+  model: grok-4.3 # for google: gemma-4-31b-it (free, 1500/day)
+  api_key: ${LLM_API_KEY} # interpolated from env
+  daily_request_budget: 1500 # provider's daily cap; tune per model/tier
+  budget_safety_factor: 0.8 # use 80% of budget — leaves headroom for retries
 
 filters:
   # A unit is "interesting" if it satisfies all of these.
   min_bedrooms: 3
-  min_bathrooms: 3
-  max_price_usd: null              # set a number to filter, or null to ignore
+  min_bathrooms: 2
+  max_price_usd: 8750 # set a number to filter, or null to ignore
 
 notification:
   provider: ntfy
   ntfy_server: https://ntfy.sh
   ntfy_topic: ${NTFY_TOPIC}
-  ntfy_priority: 5                 # 1=min, 5=max — apartments are urgent
+  ntfy_priority: 5 # 1=min, 5=max — apartments are urgent
 
 state:
   path: state.json
@@ -30,3 +30,13 @@ logging:
 sites:
   - type: rentnema
     url: https://www.rentnema.com/availabilities
+  - type: rentjasper
+    url: https://rentjasper.securecafe.com/onlineleasing/jasper-1/oleapplication.aspx?stepname=floorplan
+  - type: modera-rincon-hill
+    url: https://www.moderarinconhill.com/san-francisco-ca-apartments/modera-rincon-hill/conventional/
+  # Zillow uses the "stealth" fetcher (patchright + real Chrome + offscreen
+  # window). The url below already includes the SF map bounds + 3BR/2+BA filter
+  # + doz=1 (past 1 day only) — leave doz=1 for production polling so we only
+  # alert on brand-new listings.
+  - type: zillow
+    url: https://www.zillow.com/homes/for_rent/?searchQueryState=%7B%22isMapVisible%22%3Atrue%2C%22mapBounds%22%3A%7B%22west%22%3A-122.52479150259838%2C%22east%22%3A-122.36995294058666%2C%22south%22%3A37.73006244849147%2C%22north%22%3A37.836156439363684%7D%2C%22mapZoom%22%3A13%2C%22filterState%22%3A%7B%22fr%22%3A%7B%22value%22%3Atrue%7D%2C%22fsba%22%3A%7B%22value%22%3Afalse%7D%2C%22fsbo%22%3A%7B%22value%22%3Afalse%7D%2C%22nc%22%3A%7B%22value%22%3Afalse%7D%2C%22cmsn%22%3A%7B%22value%22%3Afalse%7D%2C%22auc%22%3A%7B%22value%22%3Afalse%7D%2C%22fore%22%3A%7B%22value%22%3Afalse%7D%2C%22beds%22%3A%7B%22min%22%3A3%2C%22max%22%3A3%7D%2C%22baths%22%3A%7B%22min%22%3A2%2C%22max%22%3Anull%7D%2C%22doz%22%3A%7B%22value%22%3A%221%22%7D%7D%2C%22isListVisible%22%3Atrue%2C%22customRegionId%22%3A%2235dd16a003X1-CRfuf93lwo0ksx_1534f5%22%2C%22usersSearchTerm%22%3A%22%22%2C%22pagination%22%3A%7B%7D%7D

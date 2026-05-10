@@ -24,11 +24,15 @@ class _SiteRuntime:
 
 
 class Runner:
-    def __init__(self, cfg: Config, notifier=None):
+    def __init__(self, cfg: Config, notifier=None, dry_run: bool = False):
         self.cfg = cfg
         self.state = StateStore(cfg.state_path)
         self.llm = make_llm(cfg.llm)
         self.notifier = notifier if notifier is not None else make_notifier(cfg.notification)
+        # When dry_run, we still log "would notify" but do NOT touch the
+        # state's notified_at — otherwise a dry run permanently suppresses
+        # the real notification for units it saw.
+        self.dry_run = dry_run
 
         # One fetcher instance per fetcher kind, shared across sites.
         self._fetchers: dict[str, Fetcher] = {}
@@ -72,9 +76,11 @@ class Runner:
             log.info("[%s] NEW MATCH: %s", site.name, u.to_dict())
             try:
                 self.notifier.send(u)
-                self.state.mark_notified(u.key())
             except Exception as e:
                 log.error("[%s] notify failed for %s: %s", site.name, u.key(), e)
+                continue
+            if not self.dry_run:
+                self.state.mark_notified(u.key())
 
     def _matches(self, u: Unit) -> bool:
         f = self.cfg.filters

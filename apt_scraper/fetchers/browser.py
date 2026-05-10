@@ -43,13 +43,15 @@ class BrowserFetcher:
         )
 
     def fetch(self, url: str, **kwargs) -> str:
-        wait_for = kwargs.get("wait_for")  # CSS selector to wait on
-        wait_ms = kwargs.get("wait_ms", 1500)
+        wait_for = kwargs.get("wait_for")          # CSS selector to wait on
+        wait_ms = kwargs.get("wait_ms", 1500)      # extra ms after load
+        wait_until = kwargs.get("wait_until", "domcontentloaded")  # "load" | "domcontentloaded" | "networkidle"
+        timeout = kwargs.get("timeout_ms", 45_000)
         page = self._ctx.new_page()
         try:
-            page.goto(url, wait_until="networkidle", timeout=45_000)
+            page.goto(url, wait_until=wait_until, timeout=timeout)
             if wait_for:
-                page.wait_for_selector(wait_for, timeout=15_000)
+                page.wait_for_selector(wait_for, timeout=30_000)
             else:
                 page.wait_for_timeout(wait_ms + random.randint(0, 500))
             return page.content()

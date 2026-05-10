@@ -68,14 +68,33 @@ scraper/
     ├── fetchers/
     │   ├── base.py              # Fetcher Protocol
     │   ├── http.py              # httpx + realistic browser headers
-    │   └── browser.py           # playwright + lightweight stealth
+    │   ├── browser.py           # playwright + lightweight stealth (Cloudflare-tier)
+    │   └── stealth.py           # patchright + real Chrome + offscreen window (PerimeterX-tier)
     ├── llm/
     │   ├── base.py              # LLMProvider Protocol
-    │   └── google.py            # Gemini / Gemma via google-genai
+    │   ├── _shared.py           # provider-agnostic helpers (prompt, JSON parse, retry)
+    │   ├── google.py            # Gemini / Gemma via google-genai
+    │   └── xai.py               # Grok via the OpenAI-compatible xAI endpoint
     └── sites/
         ├── base.py              # Site abstract base
-        └── rentnema.py          # rentnema.com adapter
+        ├── _html.py             # shared HTML noise-stripping helpers
+        ├── rentnema.py          # rentnema.com (http fetcher)
+        ├── rentjasper.py        # rentjasper.securecafe.com (browser fetcher, CF)
+        ├── modera_rincon_hill.py  # moderarinconhill.com (browser fetcher, CF)
+        └── zillow.py            # zillow.com (stealth fetcher, PerimeterX)
 ```
+
+## Fetcher selection
+
+Sites declare `fetcher_kind` based on how aggressive their bot detection is:
+
+| Kind | Backend | Use when |
+| --- | --- | --- |
+| `http` | httpx + realistic UA/headers | Server-rendered, no bot challenge (rentnema). |
+| `browser` | playwright + Chromium, lightweight stealth | Cloudflare bot challenge or JS-rendered SPA (rentjasper, modera). Headless works. |
+| `stealth` | **patchright** + real Chrome + persistent profile + offscreen window | PerimeterX/HUMAN "Press & Hold" (zillow). Headless gets caught — requires a windowed Chrome process to keep the fingerprint clean. |
+
+The `stealth` fetcher requires Chrome (the real browser, not Chromium) installed on the machine. It launches Chrome in headed mode but parks the window at `(-32000, -32000)` so it's invisible. The browser process stays alive across all polls (one launch per `Runner`), so the dock icon shows a single persistent Chrome — not a popup-per-poll.
 
 ## Adding a new site
 
@@ -142,6 +161,15 @@ timing logic.
   harder ones (Datadome, PerimeterX, aggressive Cloudflare bot management),
   swap in `playwright-stealth` or `rebrowser-playwright` inside
   `fetchers/browser.py`.
+- For Cloudflare-protected pages (e.g. `*.securecafe.com`), use
+  `wait_until="domcontentloaded"` rather than `networkidle` — the CF
+  challenge keeps the network busy so `networkidle` never fires. Then
+  combine with `wait_for=<a selector that only exists post-render>` so
+  the snapshot is taken after the real content has loaded.
+- The LLM call has built-in retries (4 attempts, exponential backoff) for
+  transient 500/503 errors common on `gemma-4-31b-it`. If you see sustained
+  failures, swap `llm.model` to `gemini-2.0-flash` or similar and update
+  `daily_request_budget` to that model's free-tier cap.
 
 ## Adding a new LLM provider
 
@@ -188,6 +216,8 @@ logging:
 sites:
   - type: rentnema
     url: https://www.rentnema.com/availabilities
+  - type: rentjasper
+    url: https://rentjasper.securecafe.com/onlineleasing/jasper-1/oleapplication.aspx?stepname=floorplan
 ```
 
 Anything in `${...}` is filled from env or `.env`. Secrets belong in `.env`,

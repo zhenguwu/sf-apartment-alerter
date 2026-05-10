@@ -3,17 +3,7 @@ from __future__ import annotations
 import re
 
 from .base import Site
-
-
-# Stripped wholesale: nothing in these adds signal, and they balloon the page.
-_STRIP_TAGS = re.compile(
-    r"<(svg|script|style|noscript|picture|source|iframe)\b[^>]*>.*?</\1>",
-    re.DOTALL | re.IGNORECASE,
-)
-# Self-closing junk.
-_STRIP_VOID = re.compile(r"<(img|input|link|meta)\b[^>]*?/?>", re.IGNORECASE)
-_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-_WHITESPACE = re.compile(r"\s{2,}")
+from ._html import strip_noise
 
 
 class RentNema(Site):
@@ -32,11 +22,7 @@ class RentNema(Site):
         return {}
 
     def narrow(self, html: str) -> str:
-        html = _STRIP_TAGS.sub("", html)
-        html = _STRIP_VOID.sub("", html)
-        html = _HTML_COMMENT.sub("", html)
-        html = _WHITESPACE.sub(" ", html)
-
+        html = strip_noise(html)
         m = re.search(r'<div class="availabilities-list\s*"', html)
         if not m:
             return html

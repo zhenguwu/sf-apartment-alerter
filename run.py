@@ -34,7 +34,7 @@ def main() -> None:
         class _NoopNotifier:
             def send(self, unit):
                 logging.getLogger("dryrun").info("[DRY RUN] would notify: %s", unit.to_dict())
-        runner = Runner(cfg, notifier=_NoopNotifier())
+        runner = Runner(cfg, notifier=_NoopNotifier(), dry_run=True)
     else:
         runner = Runner(cfg)
 

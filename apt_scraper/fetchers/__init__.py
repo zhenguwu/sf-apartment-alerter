@@ -11,4 +11,9 @@ def get_fetcher(kind: str) -> Fetcher:
         # Imported lazily so users without playwright installed can still run http-only sites.
         from .browser import BrowserFetcher
         return BrowserFetcher()
+    if kind == "stealth":
+        # patchright + real Chrome + offscreen window. Heavier; only for sites
+        # behind aggressive bot detection (PerimeterX, etc).
+        from .stealth import StealthFetcher
+        return StealthFetcher()
     raise ValueError(f"Unknown fetcher: {kind}")
