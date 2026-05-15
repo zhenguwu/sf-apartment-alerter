@@ -10,6 +10,18 @@ exactly once.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+
+# pip only installs the *Python wrappers* — the actual browser binaries are
+# downloaded by a separate step per package. Skip these only if none of your
+# configured sites use the browser/stealth fetchers.
+.venv/bin/playwright install chromium     # for fetcher_kind=browser sites
+.venv/bin/patchright install chromium     # for fetcher_kind=stealth sites
+
+# stealth fetcher needs *real* Google Chrome (not Chromium) installed.
+# On macOS:
+#   brew install --cask google-chrome
+# (or download from google.com/chrome).
+
 cp .env.example .env             # edit NTFY_TOPIC to a long random string
 .venv/bin/python run.py --once --no-notify   # smoke test
 .venv/bin/python run.py                       # poll forever
@@ -240,8 +252,16 @@ regardless of the budget calculation. If you swap in a faster model (e.g.
 
 ### Running it on macOS with launchd (recommended)
 
+The shipped plist contains `__REPO_DIR__` placeholders that must be substituted
+with the actual absolute repo path on *this* machine before installing —
+launchd does NOT expand `$HOME`, `~`, or env vars inside the plist itself.
+
+From the repo root:
+
 ```bash
-cp com.zwu.aptscraper.plist ~/Library/LaunchAgents/
+REPO_DIR="$(pwd)"
+sed "s|__REPO_DIR__|$REPO_DIR|g" com.zwu.aptscraper.plist \
+    > ~/Library/LaunchAgents/com.zwu.aptscraper.plist
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
 tail -f stdout.log
 ```
@@ -250,6 +270,29 @@ Stop it:
 
 ```bash
 launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+```
+
+Reload after editing the plist (e.g. moving the repo):
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+sed "s|__REPO_DIR__|$(pwd)|g" com.zwu.aptscraper.plist \
+    > ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+```
+
+Diagnose if "nothing seems to happen" (most often: wrong path = launchd
+respawning a doomed process every 30s and never creating the log files):
+
+```bash
+# Loaded? "state = running" means good; "last exit code = 78" means spawn failed.
+launchctl print gui/$(id -u)/com.zwu.aptscraper | head -40
+
+# launchd's own log — will name the missing binary or directory.
+log show --predicate 'process == "launchd"' --info --last 10m | grep aptscraper
+
+# Sanity: the paths the plist installed with.
+grep '<string>/' ~/Library/LaunchAgents/com.zwu.aptscraper.plist
 ```
 
 The Mac must stay awake. Set Energy Saver → "Prevent automatic sleeping

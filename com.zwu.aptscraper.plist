@@ -3,14 +3,29 @@
 launchd agent for the apartment scraper. Keeps the script running on macOS
 even after restarts, with auto-restart on crash.
 
-Setup:
-  1. Edit WorkingDirectory and ProgramArguments paths below if needed.
-  2. cp com.zwu.aptscraper.plist ~/Library/LaunchAgents/
-  3. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
-  4. tail -f stdout.log
+This plist hardcodes absolute paths because launchd does NOT expand $HOME,
+~ , or any other env var inside the plist (the ProcessType/Background/etc.
+fields are also strict). You MUST replace __REPO_DIR__ with the absolute
+repo path for this machine before installing.
 
-To stop:
-  launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+Quick install (run from the repo root — substitutes paths and loads it):
+
+    REPO_DIR="$(pwd)"
+    sed "s|__REPO_DIR__|$REPO_DIR|g" com.zwu.aptscraper.plist \
+        > ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+    tail -f stdout.log
+
+Stop:
+
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.zwu.aptscraper.plist
+
+Diagnose ("loaded but failing" = wrong paths or missing binaries):
+
+    launchctl print gui/$(id -u)/com.zwu.aptscraper | head -40
+    log show --predicate 'process == "launchd"' --info --last 10m | grep aptscraper
+
+If you change the repo location, re-run the sed line above and bootstrap again.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -19,12 +34,12 @@ To stop:
     <string>com.zwu.aptscraper</string>
 
     <key>WorkingDirectory</key>
-    <string>/Users/zwu/Documents/sf-apartment-alerter</string>
+    <string>__REPO_DIR__</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/zwu/Documents/sf-apartment-alerter/.venv/bin/python</string>
-        <string>/Users/zwu/Documents/sf-apartment-alerter/run.py</string>
+        <string>__REPO_DIR__/.venv/bin/python</string>
+        <string>__REPO_DIR__/run.py</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -37,10 +52,10 @@ To stop:
     <integer>30</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/zwu/Documents/sf-apartment-alerter/stdout.log</string>
+    <string>__REPO_DIR__/stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/zwu/Documents/sf-apartment-alerter/stderr.log</string>
+    <string>__REPO_DIR__/stderr.log</string>
 
     <!-- Prevent macOS from putting the process to sleep -->
     <key>ProcessType</key>
